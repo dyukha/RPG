@@ -3,9 +3,11 @@ package dyukha.rpg.core
 import java.util.*
 
 class IL {
-  data class Grammar(val rules: List<Rule>, val options : Options, val header : String, val tokenTypes : TokenTypes) { }
+  data class Grammar(val rules: List<Rule>, val options : Options?, val header : SourceText?, val tokenTypes : TokenTypes?)
 
-  data class Rule(val nonTerm : String, val production : Element, val attrs : List<Attribute>) { }
+  data class Rule(val nonTerm : SourceText, val production : Element, val attrs : List<Attribute>)
+
+  data class SourceText(val text: String, val row: Int, val col: Int)
 
   class Options {
     private val map = HashMap<String, String>()
@@ -16,7 +18,7 @@ class IL {
       val joiner = StringJoiner(System.lineSeparator())
       joiner.add("options {")
       for ((k,v) in map)
-        joiner.add("  $k = \"$v\"")
+        joiner.add("  $k = $v")
       joiner.add("}")
       return joiner.toString()
     }
@@ -43,8 +45,8 @@ class IL {
     }
   }
 
-  data class Attribute(val name : String) {
-    fun print() = "[<$name>]"
+  data class Attribute(val name : SourceText) {
+    fun print() = "[<${name.text}>]"
   }
 
   // any part of the rule
@@ -57,17 +59,17 @@ class IL {
   interface NonParseElement : Element { }
 
   // Types of elements
-  data class Token(val name: String) : Element {
+  data class Token(val name: SourceText) : Element {
     override fun visit(visitor: ElementVisitor) = visitor.visitToken(this)
     override fun <T> call(caller: ElementCaller<T>) = caller.callToken(this)
   }
 
-  data class Literal(val text: String) : Element {
+  data class Literal(val text: SourceText) : Element {
     override fun visit(visitor: ElementVisitor) = visitor.visitLiteral(this)
     override fun <T> call(caller: ElementCaller<T>) = caller.callLiteral(this);
   }
 
-  data class NonTerm(val name: String) : Element {
+  data class NonTerm(val name: SourceText) : Element {
     override fun visit(visitor: ElementVisitor) = visitor.visitNonTerm(this)
     override fun <T> call(caller: ElementCaller<T>) = caller.callNonTerm(this)
   }
@@ -78,11 +80,26 @@ class IL {
   }
 
   data class Ebnf(val element: Element, val ebnfType: EbnfType) : Element {
-    enum class EbnfType(val symbol : String) {
-      OPT("?"),
-      ANY("*"),
-      NO_ZERO("+");
+    enum class EbnfType(val symbol : Char) {
+      OPT('?'),
+      ANY('*'),
+      NO_ZERO('+');
+
+      companion object {
+        fun ofChar(ch: Char) =
+            when (ch) {
+              '?' -> OPT
+              '*' -> ANY
+              '+' -> NO_ZERO
+              else ->
+                throw IllegalArgumentException("ch = " + ch.toString())
+            }
+
+        val allChars = listOf('?', '*', '+')
+      }
+
     }
+
 
     override fun visit(visitor: ElementVisitor) = visitor.visitEbnf(this)
     override fun <T> call(caller: ElementCaller<T>) = caller.callEbnf(this);
@@ -93,14 +110,14 @@ class IL {
     override fun <T> call(caller: ElementCaller<T>) = caller.callAlt(this)
   }
 
-  data class Meta(val name : String, val arguments : List<Element>) : Element {
+  data class Meta(val name : SourceText, val arguments : List<Element>) : Element {
     override fun visit(visitor: ElementVisitor) = visitor.visitMeta(this)
     override fun <T> call(caller: ElementCaller<T>) = caller.callMeta(this)
   }
 
   // NonParseElements
 
-  data class LookaheadModifier(val tokens : List<String>, val modifier: Modifier) : NonParseElement {
+  data class LookaheadModifier(val tokens : List<SourceText>, val modifier: Modifier) : NonParseElement {
     enum class Modifier(mode : Boolean) {
       FORBID(false),
       NEED(true)
@@ -109,7 +126,7 @@ class IL {
     override fun <T> call(caller: ElementCaller<T>) = caller.callLookaheadModifier(this)
   }
 
-  data class ActionCode(val code : String) : NonParseElement {
+  data class ActionCode(val code : SourceText) : NonParseElement {
     override fun visit(visitor: ElementVisitor) = visitor.visitActionCode(this)
     override fun <T> call(caller: ElementCaller<T>) = caller.callActionCode(this)
   }

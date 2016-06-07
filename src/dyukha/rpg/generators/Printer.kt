@@ -18,11 +18,11 @@ class Printer : Generator<String> {
       return print;
     }
 
-    override fun callToken(t: IL.Token) = PrintResult(t.name, false)
+    override fun callToken(t: IL.Token) = PrintResult(t.name.text, false)
 
-    override fun callLiteral(lit: IL.Literal) = PrintResult(lit.text, false)
+    override fun callLiteral(lit: IL.Literal) = PrintResult(lit.text.text, false)
 
-    override fun callNonTerm(nonTerm: IL.NonTerm) = PrintResult(nonTerm.name, false)
+    override fun callNonTerm(nonTerm: IL.NonTerm) = PrintResult(nonTerm.name.text, false)
 
     override fun callSeq(seq: IL.Seq): PrintResult {
       val elems = seq.elements;
@@ -44,19 +44,45 @@ class Printer : Generator<String> {
     }
 
     override fun callAlt(alt: IL.Alt): PrintResult {
-      throw UnsupportedOperationException()
+      val (alts) = alt
+      if (alts.size == 1)
+        return call(alts[0])
+      val joiner = StringJoiner(" | ")
+      for (e in alts)
+        joiner.add(callAndWrap(e))
+      return PrintResult(joiner.toString(), true)
     }
 
     override fun callMeta(meta: IL.Meta): PrintResult {
-      throw UnsupportedOperationException()
+      val (name, args) = meta
+      fun wrap(str: String) = PrintResult("$name<$str>", false)
+      if (args.size == 0)
+        return PrintResult(name.text, false)
+      if (args.size == 1)
+        return wrap(call(args[0]).res)
+      val joiner = StringJoiner(" ")
+      for (e in args)
+        joiner.add(callAndWrap(e))
+      return wrap(joiner.toString())
+
     }
 
     override fun callLookaheadModifier(lookaheadModifier: IL.LookaheadModifier): PrintResult {
-      throw UnsupportedOperationException()
+      val (tokens, modifier) = lookaheadModifier
+      var pref = when(modifier) {
+        IL.LookaheadModifier.Modifier.FORBID -> "/~"
+        IL.LookaheadModifier.Modifier.NEED -> "/"
+      }
+      if (tokens.size == 1)
+        return PrintResult(pref + tokens[0], false)
+      val joiner = StringJoiner(", ", pref + "[", "]")
+      for (t in tokens)
+        joiner.add(t.text)
+      return PrintResult(joiner.toString(), false)
     }
 
     override fun callActionCode(actionCode: IL.ActionCode): PrintResult {
-      throw UnsupportedOperationException()
+      return PrintResult("{[ ${actionCode.code}]}", false)
     }
   }
 
@@ -64,13 +90,18 @@ class Printer : Generator<String> {
     val (rules, options, header, tokenTypes) = g
     val joiner = StringJoiner(System.lineSeparator())
 
-    joiner.add("%{")
-    joiner.add(header)
-    joiner.add("}%")
+    if (header != null) {
+      joiner.add("header {")
+      joiner.add(header.text)
+      joiner.add("}%")
+    }
 
-    joiner.add(options.print())
-    joiner.add(tokenTypes.print())
+    if (options != null)
+      joiner.add(options.print())
+    if (tokenTypes != null)
+      joiner.add(tokenTypes.print())
 
+    joiner.add("grammar {")
     val printCaller = PrintCaller()
     for (rule in rules) {
       val (nonTerm, prod, attrs) = rule
@@ -83,6 +114,7 @@ class Printer : Generator<String> {
           .append(printCaller.call(prod))
       joiner.add(ruleBuilder)
     }
+    joiner.add("}")
     return joiner.toString()
   }
 
