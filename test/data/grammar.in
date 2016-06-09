@@ -1,1 +1,23 @@
-abacaba
+header {
+  interface SimpleList<T>()
+  class EmptyList<T> : SimpleList<T> {
+    private constructor()
+    class object {
+      val instance = EmptyList<T>();
+    }
+  }
+}%
+
+grammar {
+  opt<r> = r | ;
+  list<r><T> = {List<T>()} | res=list<r> last=r { res.add(last); res }
+
+  sep_list<elem sep><T> =
+    | e=elem {List<T>() {e}}
+    | res=sep_list<elem sep> (s : List<T>)=sep (e : T)=elem { res.add(e); res }
+
+  args_list = '(' [sep_list<arg ','>] ')'
+  //list_sep<r sep> = 
+  //args_sep_list =
+  //  sep_list<elem sep>
+}

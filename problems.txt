@@ -1,0 +1,27 @@
+Looks like hand-written YardFrontend is OK for the first time. Later it may be rewritten with the help of RPG itself.
+Problems: is 'options' a rule definition or start of options list? It's not a trivial decision for LL(1)
+Solution: use 'grammar {rules}' for rules. It's even difficult to say if this is a complication for user.
+Decision: do it!
+
+We need some way to describe action code. Usual {AC} - syntax is not acceptable because these characters appear in usual code (unlike F#).
+Current decision: {[AC]}. It's possible to write code, contining ]} in it, but:
+1) if user use appropriate formatting, it's unlinkely;
+2) error message will occur early and will be clear.
+
+I think that l-attributes are
+1) difficult to implement correctly;
+2) not so much of use.
+Decision: no l-attributes.
+
+There is a problem, concerning type inference system - kotlin in comparison with F# has much less powerful one.
+In F# we can simply write value names without any type specification.
+It means that meta-rules are pretty straightforward in F#, what's not the case with Kotlin.
+Possible solution (for meta-rules): use generics.
+Problems:
+1) need some syntax for them; maybe smth like this: nonTerm<r1 r2 r3><T1 T2>.
+   But what if we only want type params, but not metaArgs?
+   Possible solution: nonTerm[metaArgs]<typeParams>
+   Problem: we use [...] as syntactic sugar for (...)?. It'll be no use. 
+   Decision: do it! (nonTerm[metaArgs]<typeParams>; only (...)? form)
+2) it's unclear, if we will need more type specs (e.g. for left side), so maybe we need more drastic changes in syntax.
+Decision: need more understanding of kotlin type (inference) system, but currently do it!

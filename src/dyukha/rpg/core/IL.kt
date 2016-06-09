@@ -5,7 +5,7 @@ import java.util.*
 class IL {
   data class Grammar(val rules: List<Rule>, val options : Options?, val header : SourceText?, val tokenTypes : TokenTypes?)
 
-  data class Rule(val nonTerm : SourceText, val production : Element, val attrs : List<Attribute>)
+  data class Rule(val nonTerm : NonTerm, val production : Element, val attrs : List<Attribute>)
 
   data class SourceText(val text: String, val row: Int, val col: Int)
 
